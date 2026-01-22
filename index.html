@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Vili</title>
+  <style>
+    :root{
+      --bg:#060b07;
+      --fg:#b6ffb6;
+      --muted:#7fdc7f;
+      --dim:#3f7a3f;
+      --accent:#00ff77;
+      --danger:#ff4d4d;
+      --card:#07110a;
+    }
+
+.fadeOut {
+  animation: fadeOut 550ms ease forwards;
+}
+.fadeIn {
+  animation: fadeIn 550ms ease forwards;
+}
+
+@keyframes fadeOut {
+  to { opacity: 0; transform: translateY(-6px); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.progressWrap{
+  margin-top: 10px;
+  border: 1px solid rgba(0,255,119,0.18);
+  border-radius: 12px;
+  overflow: hidden;
+  height: 14px;
+  background: rgba(0,0,0,0.35);
+}
+
+.progressBar{
+  height: 100%;
+  width: 0%;
+  background: rgba(0,255,119,0.7);
+  box-shadow: 0 0 12px rgba(0,255,119,0.25);
+  transition: width 200ms linear;
+}
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      background: radial-gradient(1200px 800px at 50% 20%, #08150c, var(--bg));
+      color:var(--fg);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      overflow:hidden;
+    }
+
+    /* CRT-ish scanlines + vignette */
+    body::before{
+      content:"";
+      position:fixed; inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(to bottom,
+          rgba(255,255,255,0.03),
+          rgba(0,0,0,0.03) 2px,
+          rgba(0,0,0,0.00) 4px
+        );
+      background-size: 100% 4px;
+      mix-blend-mode: overlay;
+      opacity:0.35;
+    }
+    body::after{
+      content:"";
+      position:fixed; inset:-40px;
+      pointer-events:none;
+      background: radial-gradient(circle at 50% 30%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.45) 65%, rgba(0,0,0,0.75) 100%);
+    }
+
+    .terminal{
+      width:min(980px, 100%);
+      height:min(640px, 100%);
+      border:1px solid rgba(0,255,119,0.25);
+      border-radius:14px;
+      background: linear-gradient(180deg, rgba(7,17,10,0.92), rgba(5,10,7,0.94));
+      box-shadow:
+        0 30px 90px rgba(0,0,0,0.55),
+        0 0 0 1px rgba(0,255,119,0.08) inset,
+        0 0 40px rgba(0,255,119,0.08);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      position:relative;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(0,255,119,0.12);
+      background: rgba(6,11,7,0.75);
+    }
+
+    .dots{
+      display:flex; gap:8px; margin-right:6px;
+    }
+    .dot{ width:11px; height:11px; border-radius:50%; }
+    .dot.red{ background:#ff5f57; }
+    .dot.yellow{ background:#febc2e; }
+    .dot.green{ background:#28c840; }
+
+    .title{
+      color:var(--muted);
+      font-size:13px;
+      letter-spacing:0.4px;
+      opacity:0.9;
+      user-select:none;
+    }
+
+    .content{
+      padding:16px 16px 10px;
+      overflow:auto;
+      flex:1;
+      scroll-behavior:smooth;
+    }
+
+    .line{
+      white-space:pre-wrap;
+      line-height:1.45;
+      margin:2px 0;
+    }
+
+    .promptRow{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      padding:0 16px 16px;
+      border-top:1px solid rgba(0,255,119,0.08);
+      background: rgba(6,11,7,0.55);
+    }
+
+    .prompt{
+      color:var(--muted);
+      user-select:none;
+      padding-top:12px;
+      min-width:max-content;
+    }
+
+    .inputWrap{
+      flex:1;
+      padding-top:10px;
+      position:relative;
+    }
+
+    input{
+      width:100%;
+      border:none;
+      outline:none;
+      background:transparent;
+      color:var(--fg);
+      font: inherit;
+      font-size:14px;
+      caret-color: var(--accent);
+      padding:2px 0;
+    }
+
+    .hint{
+      color:var(--dim);
+      font-size:12px;
+      padding-top:2px;
+      user-select:none;
+    }
+
+    .badge{
+      display:inline-block;
+      padding:2px 8px;
+      border:1px solid rgba(0,255,119,0.22);
+      border-radius:999px;
+      background: rgba(0,255,119,0.06);
+      color: var(--accent);
+      font-size:12px;
+      margin-left:8px;
+    }
+
+    .link{
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(0,255,119,0.35);
+    }
+    .link:hover{ border-bottom-style:solid; }
+
+    .ok{ color: var(--accent); }
+    .warn{ color: #ffd166; }
+    .err{ color: var(--danger); }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+      margin:10px 0 2px;
+    }
+    .card{
+      border:1px solid rgba(0,255,119,0.14);
+      background: rgba(7,17,10,0.55);
+      border-radius:12px;
+      padding:10px 12px;
+    }
+    .cardTitle{ color: var(--accent); margin-bottom:6px; }
+    .muted{ color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="terminal" role="application" aria-label="Terminal portfolio">
+    <div class="topbar">
+      <div class="dots">
+        <div class="dot red"></div>
+        <div class="dot yellow"></div>
+        <div class="dot green"></div>
+      </div>
+      <div class="title">givemefreerobuc@gmail.com:~ — interactive terminal</div>
+      <span class="badge">type: help</span>
+    </div>
+
+    <div id="boot" class="content" aria-live="polite"></div>
+<div id="content" class="content" aria-live="polite" style="display:none;"></div>
+
+    <div class="promptRow">
+      <div class="prompt" id="prompt">vili@portfolio:~$</div>
+      <div class="inputWrap">
+        <input id="input" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <div class="hint">↑/↓ history • Tab autocomplete • try: <span class="ok">about</span>, <span class="ok">projects</span>, <span class="ok">skills</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== CUSTOMIZE THIS DATA ======
+    const PROFILE = {
+      name: "vili (g.)",
+      role: "Roblox Developer",
+      location: "Born in Bulgaria",
+      tagline: "I develop roblox games, I can script, make UI & optimize games.",
+      email: "you@example.com",
+      links: {
+        GitHub: "https://github.com/viliiiiiiii",
+        Roblox: "https://www.roblox.com/users/3475669411/profile",
+        Website: "https://vilian.xyz/",
+        Discord: "_modules"
+      },
+      skills: [
+        "Mostly Frontend & some backend programming.",
+        "GUI Designer",
+        "Thumbnails",
+      ],
+      projects: [
+        {
+          name: "Block Factory (2023)",
+          desc: "My first released game, I was new to developing.",
+          tech: ["roblox", "game", "development"],
+          href: "https://www.roblox.com/games/15309031817/Block-Factory"
+        },
+        {
+          name: "Evolved Clickers (WIP 2026)",
+          desc: "My dream game, a simulator incremental.",
+          tech: ["Scripting", "Simulator"],
+          href: "https://www.roblox.com/games/99742884630418/Evolved-Clickers"
+        }
+      ],
+      resumeUrl: "https://x.com/4vilian"
+    };
+
+    // ====== TERMINAL ENGINE ======
+    const bootEl = document.getElementById("boot");
+    const contentEl = document.getElementById("content");
+    const inputEl = document.getElementById("input");
+
+    const COMMANDS = [
+      "help","about","projects","project","skills","contact","links","resume",
+      "clear","banner","whoami","date","echo"
+    ];
+
+    const history = [];
+    let historyIndex = -1;
+
+    function bootPrintLine(text, cls="line"){
+  const div = document.createElement("div");
+  div.className = cls;
+  div.textContent = text;
+  bootEl.appendChild(div);
+  bootEl.scrollTop = bootEl.scrollHeight;
+}
+
+async function bootSequence(){
+  const lines = [
+    "Initializing system...",
+    "Loading modules: UI_CORE, NETDRV, FS, SHELL",
+    "Checking memory... OK",
+    "Authenticating user... guest",
+    "Mounting /portfolio ... OK",
+    "Starting interactive shell...",
+    "",
+    "Welcome."
+  ];
+
+  // Fake typewriter effect
+  for (const l of lines){
+    await typeLine(l);
+  }
+
+  // Progress bar
+  const barWrap = document.createElement("div");
+  barWrap.className = "progressWrap";
+  const bar = document.createElement("div");
+  bar.className = "progressBar";
+  barWrap.appendChild(bar);
+  bootEl.appendChild(barWrap);
+
+  for (let i=0; i<=100; i+=10){
+    bar.style.width = i + "%";
+    await sleep(120);
+  }
+
+  await sleep(200);
+
+  // Fade out boot, show terminal
+  bootEl.classList.add("fadeOut");
+  await sleep(550);
+
+  bootEl.style.display = "none";
+  contentEl.style.display = "block";
+  contentEl.classList.add("fadeIn");
+
+  // Now show terminal banner + instructions
+  contentEl.innerHTML = "";
+  banner();
+  printLine("Type 'help' to get started.", "line ok");
+  printLine("");
+  inputEl.focus();
+}
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+async function typeLine(text){
+  const div = document.createElement("div");
+  div.className = "line";
+  bootEl.appendChild(div);
+
+  for (let i=0; i<text.length; i++){
+    div.textContent += text[i];
+    await sleep(18);
+  }
+  await sleep(120);
+}
+
+
+    function printLine(text, cls="line"){
+      const div = document.createElement("div");
+      div.className = cls;
+      div.textContent = text;
+      contentEl.appendChild(div);
+      contentEl.scrollTop = contentEl.scrollHeight;
+    }
+
+    function printHTML(html){
+      const div = document.createElement("div");
+      div.className = "line";
+      div.innerHTML = html;
+      contentEl.appendChild(div);
+      contentEl.scrollTop = contentEl.scrollHeight;
+    }
+
+    function banner(){
+      printLine("┌──────────────────────────────────────────────────────┐");
+      printLine(`│  ${PROFILE.name.padEnd(52)}│`);
+      printLine(`│  ${PROFILE.role.padEnd(52)}│`);
+      printLine("├──────────────────────────────────────────────────────┤");
+      printLine("│  Type 'help' to see commands.                         │");
+      printLine("│  Tip: try 'projects' then 'project 1'                 │");
+      printLine("└──────────────────────────────────────────────────────┘");
+      printLine("");
+      printLine(`${PROFILE.tagline}`, "line muted");
+      printLine("");
+    }
+
+    const handlers = {
+      help(){
+        printLine("Available commands:");
+        printLine("  help        - show this list");
+        printLine("  about       - who I am / what I do");
+        printLine("  projects    - list projects");
+        printLine("  project <n> - open project details");
+        printLine("  skills      - skills & tools");
+        printLine("  contact     - social accounts");
+        printLine("  links       - quick link list");
+        printLine("  resume      - open resume");
+        printLine("  whoami      - fun");
+        printLine("  date        - current date/time");
+        printLine("  echo <txt>  - repeat text");
+        printLine("  banner      - show banner");
+        printLine("  clear       - clear screen");
+      },
+
+      about(){
+        printLine("");
+        printLine(`Name: ${PROFILE.name}`);
+        printLine(`Role: ${PROFILE.role}`);
+        printLine(`Location: ${PROFILE.location}`);
+        printLine("");
+        printLine("Bio:");
+        printLine(`  ${PROFILE.tagline}`);
+        printLine("");
+      },
+
+      skills(){
+        printLine("");
+        printLine("Skills:");
+        PROFILE.skills.forEach(s => printLine("  • " + s));
+        printLine("");
+      },
+
+      projects(){
+        printLine("");
+        printLine("Projects:");
+        PROFILE.projects.forEach((p, i) => {
+          printLine(`  [${i+1}] ${p.name} — ${p.desc}`);
+        });
+        printLine("");
+        printLine("Tip: type 'project 1' to view details.");
+        printLine("");
+      },
+
+      project(args){
+        const n = Number(args[0]);
+        if (!n || n < 1 || n > PROFILE.projects.length){
+          printLine("Usage: project <number>", "line err");
+          return;
+        }
+        const p = PROFILE.projects[n-1];
+        printLine("");
+        printHTML(`<div class="grid">
+          <div class="card">
+            <div class="cardTitle">${escapeHtml(p.name)}</div>
+            <div class="muted">${escapeHtml(p.desc)}</div>
+            <div style="margin-top:8px">Tech: ${p.tech.map(t => `<span class="badge">${escapeHtml(t)}</span>`).join(" ")}</div>
+            <div style="margin-top:10px">Link: <a class="link" href="${p.href}" target="_blank" rel="noreferrer">open project</a></div>
+          </div>
+        </div>`);
+        printLine("");
+      },
+
+      contact(){
+        printLine("");
+        printLine(`Email: ${PROFILE.email}`);
+        printLine("Socials:");
+        for (const [k,v] of Object.entries(PROFILE.links)){
+          printHTML(`  • <a class="link" href="${v}" target="_blank" rel="noreferrer">${escapeHtml(k)}</a>`);
+        }
+        printLine("");
+      },
+
+      links(){
+        printLine("");
+        for (const [k,v] of Object.entries(PROFILE.links)){
+          printHTML(`  • <a class="link" href="${v}" target="_blank" rel="noreferrer">${escapeHtml(k)}</a> — ${escapeHtml(v)}`);
+        }
+        printLine("");
+      },
+
+      resume(){
+        if (!PROFILE.resumeUrl){
+          printLine("Resume URL not set.", "line err");
+          return;
+        }
+        printHTML(`Opening resume: <a class="link" href="${PROFILE.resumeUrl}" target="_blank" rel="noreferrer">${escapeHtml(PROFILE.resumeUrl)}</a>`);
+      },
+
+      whoami(){
+        printLine("guest (but you can hire the admin 😈)", "line ok");
+      },
+
+      date(){
+        printLine(new Date().toString(), "line muted");
+      },
+
+      echo(args){
+        printLine(args.join(" "));
+      },
+
+      banner(){
+        banner();
+      },
+
+      clear(){
+        contentEl.innerHTML = "";
+      }
+    };
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function runCommand(raw){
+      const trimmed = raw.trim();
+      if (!trimmed) return;
+
+      // show typed command
+      printLine(`guest@portfolio:~$ ${trimmed}`);
+
+      const [cmd, ...args] = trimmed.split(/\s+/);
+      const key = cmd.toLowerCase();
+
+      if (key === "sudo") {
+        printLine("Nice try. Permission denied. 😄", "line warn");
+        return;
+      }
+
+      const fn = handlers[key];
+      if (!fn){
+        printLine(`Command not found: ${cmd}. Type 'help'.`, "line err");
+        return;
+      }
+
+      try{
+        fn(args);
+      } catch (e){
+        console.error(e);
+        printLine("Something crashed. Check console.", "line err");
+      }
+    }
+
+    function autocomplete(value){
+      const v = value.trim();
+      if (!v) return null;
+
+      const parts = v.split(/\s+/);
+      if (parts.length > 1) return null; // only autocomplete command, not args
+
+      const matches = COMMANDS.filter(c => c.startsWith(parts[0].toLowerCase()));
+      if (matches.length === 1) return matches[0] + " ";
+      if (matches.length > 1){
+        printLine(matches.join("  "), "line muted");
+      }
+      return null;
+    }
+
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){
+        const val = inputEl.value;
+        history.push(val);
+        historyIndex = history.length;
+        inputEl.value = "";
+        runCommand(val);
+      } else if (e.key === "ArrowUp"){
+        e.preventDefault();
+        if (history.length === 0) return;
+        historyIndex = Math.max(0, historyIndex - 1);
+        inputEl.value = history[historyIndex] ?? "";
+        setTimeout(() => inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length), 0);
+      } else if (e.key === "ArrowDown"){
+        e.preventDefault();
+        if (history.length === 0) return;
+        historyIndex = Math.min(history.length, historyIndex + 1);
+        inputEl.value = history[historyIndex] ?? "";
+        setTimeout(() => inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length), 0);
+      } else if (e.key === "Tab"){
+        e.preventDefault();
+        const next = autocomplete(inputEl.value);
+        if (next) inputEl.value = next;
+      }
+    });
+
+    // Boot
+  bootSequence();
+
+  </script>
+</body>
+</html>
